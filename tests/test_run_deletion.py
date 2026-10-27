@@ -184,3 +184,15 @@ def test_audio_generated_metadata_and_registered_scratch_cleanup(run,failed):
         scratch=work/'DETAINED_track01.wav';scratch.write_bytes(b'partial waveform')
         source.update(state='failed',retained_files=[{'path':str(scratch)}])
     assert perform(e,c)['status']=='deleted' and not root.exists()
+
+
+def test_retained_analysis_refuses_reused_arm_id(run,monkeypatch):
+    from fastapi import HTTPException
+    from recognition_helper import main
+    e,c,root=run
+    e.arm.detail=Mock(return_value={'job':{'guid':'different-guid'}})
+    e.arm.selection_analysis=Mock()
+    monkeypatch.setattr(main,'engine',e)
+    with pytest.raises(HTTPException,match='409'):
+        main.selection_analysis(c['id'])
+    e.arm.selection_analysis.assert_not_called()

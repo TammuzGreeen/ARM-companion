@@ -2,8 +2,8 @@
 
 ## 0.3.8 beta
 
-298 private Python tests pass (248 prior baseline plus 50 new cases); the sanitized
-container passes 289 with nine optional retained-fixture tests skipped. Selection
+299 private Python tests pass (248 prior baseline plus 51 new cases); the sanitized
+container passes 290 with nine optional retained-fixture tests skipped. Selection
 and deletion policy are documented in `selection-and-deletion.md`. Clean helper and
 ARM v7 overlay builds passed. Chromium verified the existing review flow plus deletion
 preview, cancel, job-ID confirmation and safe isolated cleanup. Backend lifecycle,

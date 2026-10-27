@@ -135,7 +135,13 @@ def delete_run(cycle_id: str, payload: DeleteRun):
 @app.get('/api/cycles/{cycle_id}/selection-analysis')
 def selection_analysis(cycle_id: str):
     cycle_folder(cycle_id)
-    return engine.arm.selection_analysis(engine.store.cycles[cycle_id]['job_id'])
+    cycle = engine.store.cycles[cycle_id]
+    if cycle.get('deletion'):
+        raise HTTPException(409,'Run cleanup has started; retained extraction analysis is unavailable')
+    job = engine.arm.detail(cycle['job_id'])['job']
+    if job.get('guid') != cycle.get('job_guid'):
+        raise HTTPException(409,'ARM job ID was reused; historical cycle is not this job')
+    return engine.arm.selection_analysis(cycle['job_id'])
 
 
 @app.get('/api/cycles/{cycle_id}/review')
