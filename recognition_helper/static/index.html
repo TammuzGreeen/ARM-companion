@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>recognition-helper</title><link rel="stylesheet" href="/static/style.css"></head>
+<body><header><h1>recognition-helper</h1><span>Capture · extract · identify · release</span></header>
+<main><section class="live"><div><h2 id="stage">Connecting…</h2><p id="message"></p><p id="backend"></p><p id="error" role="alert"></p>
+<p class="hint">Open the empty tray manually. Wait for <strong>READY FOR DISC</strong>, then place your disc. Capture and closure are automatic.</p>
+<p class="hint">After ARM ejects a completed disc: remove it, close the tray, then reopen empty. Calibration recovery: close, wait about 10 seconds, reopen empty.</p></div>
+<figure><img id="live" alt="Camera preview appears during the open-tray cycle"><figcaption>Live during capture; last preview retained when camera is idle</figcaption></figure></section>
+<h2>Disc cycles</h2><div id="cycles"></div></main><dialog id="review"><form id="form"><h2>Identify detained outputs</h2><p>Assign actual sources. Preview names, then submit your correction to authorize release once extraction is complete. Blank assignments stay detained.</p><label>Media category<select id="media_type"><option value="tv">TV</option><option value="movie">Movie</option><option value="music">Music</option><option value="audiobook">Audiobook</option></select></label>
+<section id="masterlists"></section><p id="mapping-basis" class="hint"></p><div id="fields" class="fields"></div><div id="assignments"></div><button type="button" id="preview">Preview final names</button><pre id="proposals"></pre><p id="review-error" role="alert"></p><button id="submit" type="submit">Submit correction &amp; release completed outputs</button><button type="button" id="cancel">Cancel</button></form></dialog><script src="/static/app.js"></script></body></html>

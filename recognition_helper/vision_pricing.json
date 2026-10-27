@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-10-24",
+  "sources": [
+    "https://platform.openai.com/docs/models/gpt-6-astra",
+    "https://platform.openai.com/docs/guides/images-vision"
+  ],
+  "models": {
+    "gpt-6-astra": {
+      "input_usd_per_million": 10,
+      "output_usd_per_million": 50,
+      "cache_write_multiplier": 1.25,
+      "high_detail_max_patches": 2500,
+      "image_patch_multiplier": 1.2
+    }
+  }
+}

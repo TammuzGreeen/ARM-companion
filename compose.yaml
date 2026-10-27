@@ -1,0 +1,36 @@
+name: recognition-helper
+services:
+  helper:
+    image: ${HELPER_IMAGE:-ghcr.io/tammuzgreeen/arm-companion:0.3.7-beta}
+    platform: linux/amd64
+    user: "${HELPER_UID:-1000}:${HELPER_GID:-1000}"
+    group_add: ["${OPTICAL_GID:-24}", "${VIDEO_GID:-44}"]
+    restart: unless-stopped
+    ports: ["${HELPER_BIND:-127.0.0.1}:${HELPER_PORT:-8080}:8080"]
+    devices:
+      - ${ARM_DRIVE:-/dev/sr0}:/dev/sr0:r
+      - ${CAMERA_DEVICE:-/dev/video0}:/dev/video0:rw
+    environment:
+      ARM_URL: ${ARM_URL:-http://arm-rippers:8080}
+      ARM_DRIVE: /dev/sr0
+      CAMERA_DEVICE: /dev/video0
+      HELPER_PASSWORD_FILE: /run/secrets/gui_password
+      OLLAMA_URL: ${OLLAMA_URL:-http://model-host:11434}
+      LOCAL_VISION_MODELS: ${LOCAL_VISION_MODELS:-qwen3-vl:30b-a3b-instruct-q4_K_M,qwen2.5vl:7b-q8_0}
+      TV_MIN_LENGTH_SECONDS: ${TV_MIN_LENGTH_SECONDS:-900}
+      FALLBACK_MAX_CALLS: ${FALLBACK_MAX_CALLS:-0}
+      FALLBACK_SPENDING_LIMIT_USD: ${FALLBACK_SPENDING_LIMIT_USD:-0}
+    volumes:
+      - ${STATE_DIRECTORY:-./private/state}:/state
+      - ${MEDIA_DIRECTORY:-./private/media}:/media
+      - ${GUI_PASSWORD_FILE:-./private/gui_password}:/run/secrets/gui_password:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import base64,json,os,pathlib,urllib.request; p=pathlib.Path(os.environ['HELPER_PASSWORD_FILE']).read_text().strip(); r=urllib.request.Request('http://localhost:8080/health',headers={'Authorization':'Basic '+base64.b64encode(('operator:'+p).encode()).decode()}); assert json.load(urllib.request.urlopen(r,timeout=5))['running']"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [arm]
+networks:
+  arm:
+    external: true
+    name: ${ARM_NETWORK:-arm-network}

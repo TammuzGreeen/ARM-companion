@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!requirements.txt
+!LICENSE
+!recognition_helper/
+!recognition_helper/**
+!backend_overlay/
+!backend_overlay/**
+!tests/
+!tests/**
+**/__pycache__
+**/*.pyc
+**/node_modules
+tests/fixtures

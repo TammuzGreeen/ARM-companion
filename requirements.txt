@@ -1,0 +1,9 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+httpx==0.28.1
+pydantic==2.11.3
+numpy==2.2.5
+opencv-python-headless==4.11.0.86
+PyYAML==6.0.2
+pytest==8.3.5
+mutagen==1.47.0

@@ -1,0 +1,7 @@
+{
+  "id": "example/cedar/s1d3",
+  "facts": {"media_type": "tv", "series": "Cedar Valley", "season": 1, "disc": 3, "episodes": [9, 10, 11, 12], "edition": "Synthetic collection"},
+  "episode_names": {"9": "Arrival", "10": "The Bridge", "11": "Rückkehr", "12": "Departure"},
+  "descriptive_disc": {"printed_identifiers": ["SYNTHETIC CEDAR L3"]},
+  "provenance": ["Invented example. No physical disc or source-ID associations are asserted."]
+}

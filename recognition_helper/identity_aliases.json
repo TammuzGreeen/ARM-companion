@@ -1,0 +1,11 @@
+{
+  "aliases": {
+    "star trek raumschiff voyager": "star trek voyager",
+    "raumschiff voyager": "star trek voyager",
+    "voyager": "star trek voyager",
+    "ds9": "star trek deep space nine"
+  },
+  "broad_identities": {
+    "star trek": ["star trek voyager", "star trek deep space nine", "star trek the next generation", "star trek the original series", "star trek enterprise"]
+  }
+}

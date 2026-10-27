@@ -1,0 +1,127 @@
+name: Validate and publish helper
+on:
+  push:
+    branches: [main, beta]
+    tags: ['v*-beta']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: helper-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          push: false
+          tags: recognition-helper:test
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Python regression tests
+        run: docker run --rm --entrypoint python recognition-helper:test -m pytest -q
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Rendered synthetic review
+        run: |
+          npm ci --prefix tests/browser --ignore-scripts --no-audit --no-fund
+          npx --prefix tests/browser playwright install --with-deps chromium
+          docker run -d --name review-fixture -p 127.0.0.1:18081:8080 --entrypoint python recognition-helper:test -m tests.review_server
+          trap 'docker rm -f review-fixture >/dev/null' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail -u operator:synthetic-browser-only http://127.0.0.1:18081/health >/dev/null; then break; fi
+            sleep 1
+          done
+          npm test --prefix tests/browser
+  publish:
+    if: github.event_name != 'pull_request' && github.repository == 'TammuzGreeen/ARM-companion' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' || startsWith(github.ref, 'refs/tags/v'))
+    needs: validate
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: helper-registry-publication
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine immutable references
+        id: refs
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          IMAGE=ghcr.io/tammuzgreeen/arm-companion
+          SHA_TAG="$IMAGE:sha-$GITHUB_SHA"
+          VERSION=$(sed -n 's/^__version__ = "\([0-9.]*\)"/\1/p' recognition_helper/__init__.py)
+          test -n "$VERSION"
+          if [ "$REF_TYPE" = tag ]; then test "$REF_NAME" = "v$VERSION-beta"; fi
+          echo "sha_tag=$SHA_TAG" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$IMAGE:$VERSION-beta" >> "$GITHUB_OUTPUT"
+          inspect_tag() {
+            if docker buildx imagetools inspect "$1" >inspect.out 2>inspect.err; then return 0; fi
+            if grep -Eqi 'manifest unknown|MANIFEST_UNKNOWN|not found' inspect.err; then return 1; fi
+            cat inspect.err >&2
+            exit 2
+          }
+          if inspect_tag "$SHA_TAG"; then
+            docker pull "$SHA_TAG"
+            test "$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$SHA_TAG")" = "$GITHUB_SHA"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish new SHA only
+        if: steps.refs.outputs.exists != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.refs.outputs.sha_tag }}
+          platforms: linux/amd64
+          labels: |
+            org.opencontainers.image.source=https://github.com/TammuzGreeen/ARM-companion
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify digest, protect version tag, pull and smoke
+        env:
+          SHA_TAG: ${{ steps.refs.outputs.sha_tag }}
+          VERSION_TAG: ${{ steps.refs.outputs.version_tag }}
+        run: |
+          digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | python3 -c 'import json,sys; print(json.load(sys.stdin)["digest"])'; }
+          DIGEST=$(digest "$SHA_TAG")
+          if docker buildx imagetools inspect "$VERSION_TAG" >inspect.out 2>inspect.err; then
+            test "$(digest "$VERSION_TAG")" = "$DIGEST" || { echo 'Refusing to overwrite existing version tag'; exit 1; }
+          else
+            grep -Eqi 'manifest unknown|MANIFEST_UNKNOWN|not found' inspect.err || { cat inspect.err >&2; exit 2; }
+            docker buildx imagetools create --tag "$VERSION_TAG" "$SHA_TAG@$DIGEST"
+          fi
+          docker buildx imagetools create --tag ghcr.io/tammuzgreeen/arm-companion:beta "$SHA_TAG@$DIGEST"
+          IMAGE="ghcr.io/tammuzgreeen/arm-companion@$DIGEST"
+          docker pull "$IMAGE"
+          test "$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$IMAGE")" = "$GITHUB_SHA"
+          docker run --rm --entrypoint python "$IMAGE" -c 'from recognition_helper import __version__; from recognition_helper.review import source_view; import cv2; print("Helper smoke:",__version__,cv2.__version__)'
+          echo "### Published helper (linux/amd64)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Immutable image: $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SHA tag: $SHA_TAG" >> "$GITHUB_STEP_SUMMARY"
