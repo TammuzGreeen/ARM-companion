@@ -196,3 +196,10 @@ def test_retained_analysis_refuses_reused_arm_id(run,monkeypatch):
     with pytest.raises(HTTPException,match='409'):
         main.selection_analysis(c['id'])
     e.arm.selection_analysis.assert_not_called()
+
+
+def test_historical_arm_expected_path_translates_to_same_managed_root(run):
+    e,c,root=run
+    for source in c['sources']:
+        source['expected_path']=str(Path(e.s.arm_media)/Path(source['path']).relative_to(e.s.media))
+    assert perform(e,c)['status']=='deleted'

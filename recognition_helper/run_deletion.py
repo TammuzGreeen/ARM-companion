@@ -18,6 +18,15 @@ def proof(s):
     return [s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns]
 
 
+def local_path(engine, value):
+    """Historical expected_path uses ARM's mount prefix; final path is helper-local."""
+    p = Path(value)
+    if not p.is_absolute() or '..' in p.parts:
+        raise ValueError('Unsafe recorded output path')
+    arm_root = Path(engine.s.arm_media)
+    return engine.s.media/p.relative_to(arm_root) if p.is_relative_to(arm_root) else p
+
+
 @contextlib.contextmanager
 def opened(path):
     path = Path(path)
@@ -96,16 +105,16 @@ def inspect(engine, cycle):
         values = [source.get('path'),source.get('expected_path')]
         values += [r.get('path') for r in source.get('retained_files',[]) if r.get('path')]
         for value in filter(None,values):
-            p = Path(value)
+            p = local_path(engine,value)
             if not p.is_absolute() or '..' in p.parts or not p.is_relative_to(root):
                 raise ValueError('Recorded output is outside the verified job root; manual inspection required')
     snapshot = inventory(root)
     allowed = {str(root/'.recognition-helper.json'),str(root/'.extraction-progress.json')}
     audio_parents = set()
     for source in cycle['sources']:
-        allowed.update(str(p) for p in (source.get('path'),source.get('expected_path')) if p)
-        allowed.update(r['path'] for r in source.get('retained_files',[]) if r.get('path'))
-        expected = Path(source.get('expected_path') or source['path'])
+        allowed.update(str(local_path(engine,p)) for p in (source.get('path'),source.get('expected_path')) if p)
+        allowed.update(str(local_path(engine,r['path'])) for r in source.get('retained_files',[]) if r.get('path'))
+        expected = local_path(engine,source.get('expected_path') or source['path'])
         if expected.suffix.lower()=='.flac' and expected.parent.is_relative_to(root):
             audio_parents.add(expected.parent)
             allowed.add(str(expected.parent/'.abcde.conf'))
@@ -125,7 +134,7 @@ def inspect(engine, cycle):
             paths = [source.get(k) for k in ('path','expected_path','original_detained_path')]
             paths += [r.get('path') for r in source.get('retained_files', [])]
             for value in filter(None, paths):
-                p = Path(value)
+                p = local_path(engine,value)
                 shared_paths.add(str(p))
                 try:
                     s = p.stat()
