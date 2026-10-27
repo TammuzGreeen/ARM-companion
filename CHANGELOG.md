@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — experimental/media-transfer
+
+- Opt-in background transfer of authoritative released files to local ZFS bind
+  mounts, preserving media hierarchy with SHA-256 and atomic no-clobber publication.
+- SQLite retry/recovery ledger and authenticated `/api/transfers` status; no release
+  record edits or source deletion. Disabled and dry-run by default.
+- Transfer settings extend the existing `.env.example`/Compose mechanism only.
+
 ## 0.3.7 beta
 
 - Manual review: actual extracted durations before labeled scan estimates, honest

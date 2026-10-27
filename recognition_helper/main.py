@@ -69,6 +69,11 @@ def state():
                          'runtime_access': engine.vision.access}}
 
 
+@app.get('/api/transfers')
+def transfer_status():
+    return engine.transfers.status()
+
+
 @app.get('/api/preview.jpg')
 def preview():
     if engine.camera.preview is None:

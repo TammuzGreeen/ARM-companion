@@ -3,6 +3,8 @@
 !requirements.txt
 !LICENSE
 !NOTICE
+!compose.yaml
+!.env.example
 !recognition_helper/
 !recognition_helper/**
 !backend_overlay/

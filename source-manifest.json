@@ -1,5 +1,7 @@
 {
   "application_version": "0.3.7",
+  "scope": "Deployed baseline v0.3.7-beta only; experimental branch changes are not deployed and are not covered by these hashes",
+  "baseline_commit": "6abe159aa41d31fe88dd81ca99007cad7ca08237",
   "files": {
     "recognition_helper/__init__.py": "ba14cfdaf822bc201f5320a3df7654ea41e2f9446c62cbcbef4b8441bd693e68",
     "recognition_helper/arm.py": "a76ead741e51b33eed38aaba1f00526808f58d9af6d74a7426565fd2ab3c571a",

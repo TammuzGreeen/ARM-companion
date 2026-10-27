@@ -4,7 +4,7 @@ services:
     image: ${HELPER_IMAGE:-ghcr.io/tammuzgreeen/arm-companion:0.3.7-beta}
     platform: linux/amd64
     user: "${HELPER_UID:-1000}:${HELPER_GID:-1000}"
-    group_add: ["${OPTICAL_GID:-24}", "${VIDEO_GID:-44}"]
+    group_add: ["${OPTICAL_GID:-24}", "${VIDEO_GID:-44}", "${TRANSFER_GID:-1000}"]
     restart: unless-stopped
     ports: ["${HELPER_BIND:-127.0.0.1}:${HELPER_PORT:-8080}:8080"]
     devices:
@@ -20,10 +20,45 @@ services:
       TV_MIN_LENGTH_SECONDS: ${TV_MIN_LENGTH_SECONDS:-900}
       FALLBACK_MAX_CALLS: ${FALLBACK_MAX_CALLS:-0}
       FALLBACK_SPENDING_LIMIT_USD: ${FALLBACK_SPENDING_LIMIT_USD:-0}
+      TRANSFER_ENABLED: ${TRANSFER_ENABLED:-false}
+      TRANSFER_DRY_RUN: ${TRANSFER_DRY_RUN:-true}
+      TRANSFER_INTERVAL_SECONDS: ${TRANSFER_INTERVAL_SECONDS:-60}
+      TRANSFER_DELETE_SOURCE: ${TRANSFER_DELETE_SOURCE:-false}
+      TRANSFER_VERIFY: ${TRANSFER_VERIFY:-sha256}
+      TRANSFER_SOURCE_ROOT: ${TRANSFER_SOURCE_ROOT:-/media/released}
+      TRANSFER_STATE_DIR: ${TRANSFER_STATE_DIR:-/state/transfers}
+      TRANSFER_MOVIES_DIR: ${TRANSFER_MOVIES_DIR-/transfer/movies}
+      TRANSFER_TV_DIR: ${TRANSFER_TV_DIR-/transfer/tv}
+      TRANSFER_MUSIC_DIR: ${TRANSFER_MUSIC_DIR-/transfer/music}
+      TRANSFER_AUDIOBOOKS_DIR: ${TRANSFER_AUDIOBOOKS_DIR-/transfer/audiobooks}
+      TRANSFER_MOVIES_DATASET: ${TRANSFER_MOVIES_DATASET:-}
+      TRANSFER_TV_DATASET: ${TRANSFER_TV_DATASET:-}
+      TRANSFER_MUSIC_DATASET: ${TRANSFER_MUSIC_DATASET:-}
+      TRANSFER_AUDIOBOOKS_DATASET: ${TRANSFER_AUDIOBOOKS_DATASET:-}
     volumes:
       - ${STATE_DIRECTORY:-./private/state}:/state
       - ${MEDIA_DIRECTORY:-./private/media}:/media
       - ${GUI_PASSWORD_FILE:-./private/gui_password}:/run/secrets/gui_password:ro
+      - type: bind
+        source: ${HOST_MOVIES_PATH:-/dev/null}
+        target: ${TRANSFER_MOVIES_DIR:-/transfer/movies}
+        read_only: ${TRANSFER_DESTINATIONS_READ_ONLY:-true}
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${HOST_TV_PATH:-/dev/null}
+        target: ${TRANSFER_TV_DIR:-/transfer/tv}
+        read_only: ${TRANSFER_DESTINATIONS_READ_ONLY:-true}
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${HOST_MUSIC_PATH:-/dev/null}
+        target: ${TRANSFER_MUSIC_DIR:-/transfer/music}
+        read_only: ${TRANSFER_DESTINATIONS_READ_ONLY:-true}
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${HOST_AUDIOBOOKS_PATH:-/dev/null}
+        target: ${TRANSFER_AUDIOBOOKS_DIR:-/transfer/audiobooks}
+        read_only: ${TRANSFER_DESTINATIONS_READ_ONLY:-true}
+        bind: {create_host_path: false}
     healthcheck:
       test: ["CMD", "python", "-c", "import base64,json,os,pathlib,urllib.request; p=pathlib.Path(os.environ['HELPER_PASSWORD_FILE']).read_text().strip(); r=urllib.request.Request('http://localhost:8080/health',headers={'Authorization':'Basic '+base64.b64encode(('operator:'+p).encode()).decode()}); assert json.load(urllib.request.urlopen(r,timeout=5))['running']"]
       interval: 30s

@@ -9,5 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY recognition_helper ./recognition_helper
 COPY tests ./tests
 COPY backend_overlay ./backend_overlay
+# Public templates only; never copy a private .env into an image.
+COPY compose.yaml .env.example ./
 ENV PYTHONUNBUFFERED=1
 CMD ["uvicorn", "recognition_helper.main:app", "--host", "0.0.0.0", "--port", "8080"]

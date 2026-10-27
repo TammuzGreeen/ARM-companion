@@ -87,6 +87,17 @@ class Engine:
         self.references = load_references(settings.state / 'masterlists')
         self.releasing = set()
         self.recognizing = set()
+        from .transfers import TransferWorker
+        self.transfers = TransferWorker(settings.transfer, self.transfer_records)
+
+    def transfer_records(self):
+        # The release lock is held only to copy small immutable record fields.
+        # File IO/hashing never runs under the recognition/publication lock.
+        with self.lock:
+            return [dict(cycle_id=c['id'], job_guid=c.get('job_guid'), source_id=s['source_id'],
+                         state=s['state'], path=s['path'], size_bytes=s.get('size_bytes'), released_at=s.get('released_at'))
+                    for c in self.store.cycles.values() for s in c['sources']
+                    if s.get('state') == 'released' and s.get('path')]
 
     def start(self):
         self.backend = self.arm.inspect()
@@ -95,8 +106,10 @@ class Engine:
         self.camera.start()
         self.thread = threading.Thread(target=self.run, daemon=True, name='backend-monitor')
         self.thread.start()
+        self.transfers.start()
 
     def close(self):
+        self.transfers.close()
         self.stop.set()
         self.camera.close()
         self.pool.shutdown(wait=False, cancel_futures=True)

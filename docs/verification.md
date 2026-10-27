@@ -1,5 +1,9 @@
 # Qualification boundary
 
+On `experimental/media-transfer`, this document and `source-manifest.json` describe
+the deployed **base release**, not qualification/deployment of experimental changes.
+Transfer-specific synthetic tests and operator prerequisites are in `transfers.md`.
+
 The 0.3.7 application passed 248 Python tests in the private development environment
 (240 pre-milestone baseline plus 8 review tests), including retained-evidence tests.
 The public snapshot deliberately excludes private fixtures. Those optional tests

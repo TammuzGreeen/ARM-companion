@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from .transfers import TransferSettings
 
 
 @dataclass
@@ -32,8 +33,11 @@ class Settings:
     fallback_limit: int = int(os.getenv('FALLBACK_MAX_CALLS', '0'))
     user: str = os.getenv('HELPER_USER', 'operator')
     password_file: str = os.getenv('HELPER_PASSWORD_FILE', '/run/secrets/gui_password')
+    transfer: TransferSettings | None = None
 
     def __post_init__(self):
+        if self.transfer is None:
+            self.transfer = TransferSettings.from_env(self.state, self.released, self.detention)
         if self.tv_min_length_seconds < 0:
             raise ValueError('TV_MIN_LENGTH_SECONDS must be a non-negative number of seconds')
 

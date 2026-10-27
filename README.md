@@ -1,5 +1,9 @@
 # ARM companion / recognition-helper
 
+> **Experimental branch:** local, opt-in media transfer is implemented here but
+> not deployed or part of the stable 0.3.7 image. Defaults remain disabled/dry-run;
+> source deletion is unsupported. See [transfer configuration and safety](docs/transfers.md).
+
 Beta **0.3.7**: a camera-assisted recognition and manual-review helper for an
 existing compatible Automatic Ripping Machine (ARM) installation. Linux/amd64.
 
