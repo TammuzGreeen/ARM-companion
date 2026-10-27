@@ -1,5 +1,18 @@
 # Qualification boundary
 
+## 0.3.8 beta
+
+298 private Python tests pass (248 prior baseline plus 50 new cases); the sanitized
+container passes 289 with nine optional retained-fixture tests skipped. Selection
+and deletion policy are documented in `selection-and-deletion.md`. Clean helper and
+ARM v7 overlay builds passed. Chromium verified the existing review flow plus deletion
+preview, cancel, job-ID confirmation and safe isolated cleanup. Backend lifecycle,
+filesystem protections, partial failure/retry and queue checks have synthetic tests.
+Retained regression evidence was evaluated privately, read-only; it is not published.
+No physical re-rip or production deletion is claimed by these software checks.
+
+## Prior release
+
 The 0.3.7 application passed 248 Python tests in the private development environment
 (240 pre-milestone baseline plus 8 review tests), including retained-evidence tests.
 The public snapshot deliberately excludes private fixtures. Those optional tests

@@ -108,6 +108,36 @@ class MasterlistReview(BaseModel):
     action: str
 
 
+class DeleteRun(BaseModel):
+    token: str = Field(max_length=200)
+    confirmed_job_id: int
+
+
+@app.post('/api/cycles/{cycle_id}/deletion-preview')
+def deletion_preview(cycle_id: str):
+    from .run_deletion import preview
+    cycle_folder(cycle_id)
+    with engine.lock:
+        return preview(engine,engine.store.cycles[cycle_id])
+
+
+@app.post('/api/cycles/{cycle_id}/delete-run')
+def delete_run(cycle_id: str, payload: DeleteRun):
+    from .run_deletion import execute
+    cycle_folder(cycle_id)
+    with engine.lock:
+        try:
+            return execute(engine,engine.store.cycles[cycle_id],payload.token,payload.confirmed_job_id)
+        except (ValueError,OSError,KeyError) as error:
+            raise HTTPException(409,str(error)) from None
+
+
+@app.get('/api/cycles/{cycle_id}/selection-analysis')
+def selection_analysis(cycle_id: str):
+    cycle_folder(cycle_id)
+    return engine.arm.selection_analysis(engine.store.cycles[cycle_id]['job_id'])
+
+
 @app.get('/api/cycles/{cycle_id}/review')
 def review(cycle_id: str):
     cycle_folder(cycle_id)

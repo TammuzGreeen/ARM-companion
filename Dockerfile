@@ -1,6 +1,6 @@
 FROM python:3.12.10-slim-bookworm
 WORKDIR /app
-LABEL org.opencontainers.image.title="recognition-helper" org.opencontainers.image.version="0.3.7"
+LABEL org.opencontainers.image.title="recognition-helper" org.opencontainers.image.version="0.3.8"
 RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 flac && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 COPY LICENSE /usr/share/doc/recognition-helper/LICENSE

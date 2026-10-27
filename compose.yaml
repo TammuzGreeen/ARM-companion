@@ -1,7 +1,7 @@
 name: recognition-helper
 services:
   helper:
-    image: ${HELPER_IMAGE:-ghcr.io/tammuzgreeen/arm-companion:0.3.7-beta}
+    image: ${HELPER_IMAGE:-ghcr.io/tammuzgreeen/arm-companion:0.3.8-beta}
     platform: linux/amd64
     user: "${HELPER_UID:-1000}:${HELPER_GID:-1000}"
     group_add: ["${OPTICAL_GID:-24}", "${VIDEO_GID:-44}"]

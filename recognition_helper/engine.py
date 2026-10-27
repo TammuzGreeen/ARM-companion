@@ -147,6 +147,8 @@ class Engine:
             if any(d.get('state') != 'ready' for d in self.queue.get('drives', [])):
                 return False, 'Drive busy or cleanup pending; not ready for a new physical cycle.'
             for cycle in self.store.snapshot():
+                if cycle.get('deletion', {}).get('status')=='deleted':
+                    continue
                 if not cycle.get('job_id') or cycle.get('ejection_observed'):
                     continue
                 detail = self.arm.detail(cycle['job_id'])
@@ -505,6 +507,8 @@ class Engine:
             return result
 
     def correct(self, cycle_id, payload):
+        if self.store.cycles[cycle_id].get('deletion'):
+            raise ValueError('Run cleanup has started; outputs cannot be corrected/released')
         with self.lock:
             cycle = self.store.cycles[cycle_id]
             if not any(source.get('state') != 'released' for source in cycle['sources']):
@@ -532,6 +536,8 @@ class Engine:
             return copy.deepcopy(cycle)
 
     def release(self, cycle):
+        if cycle.get('deletion'):
+            return
         for source in cycle['sources']:
             if source.get('state') == 'released':
                 # v0.1 left a resolved filesystem error in the display reason.
@@ -636,7 +642,7 @@ class Engine:
                 jobs = self.arm.jobs()
                 with self.lock:
                     for cycle in self.store.cycles.values():
-                        if cycle.get('superseded'):
+                        if cycle.get('superseded') or cycle.get('deletion'):
                             continue
                         if not cycle.get('close_intent') and not cycle.get('close_acknowledged'):
                             continue

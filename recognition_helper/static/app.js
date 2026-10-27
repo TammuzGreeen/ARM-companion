@@ -1,4 +1,15 @@
 const $ = selector => document.querySelector(selector);
+let deletionPlan=null, deletionCycle=null;
+async function previewDeletion(id) {
+  deletionPlan=null; deletionCycle=id;
+  $('#delete-job-id').value=''; $('#delete-confirm').disabled=true; $('#delete-error').textContent='';
+  try {
+    const data=await api(`/api/cycles/${id}/deletion-preview`,{});
+    deletionPlan=data;
+    $('#delete-plan').textContent=JSON.stringify(data,null,2);
+    $('#delete-dialog').showModal();
+  } catch(error) { $('#error').textContent=error.message; }
+}
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => esc(JSON.stringify(value, null, 2));
 let current, draftIdentity = {}, cycles = [], previewed = false, lastRendering = '', paths = {};
@@ -51,7 +62,9 @@ function render(cycle) {
     }).join('')}</div>
     <table><thead><tr><th>Source identifier</th><th>Status</th><th>Duration / file details</th><th>Proposed name / unresolved reason</th></tr></thead>
     <tbody>${cycle.sources.map(outputRow).join('')}</tbody></table>
-    <button data-review="${cycle.id}" ${reviewable ? '' : 'disabled'}>Identify / correct detained outputs</button>
+    <button data-review="${cycle.id}" ${reviewable && !cycle.deletion ? '' : 'disabled'}>Identify / correct detained outputs</button>
+    ${cycle.job_id ? `<button data-selection="${cycle.id}">Analyze retained video scan</button>${cycle.deletion?.status==='deleted' ? '<strong>Run deleted — diagnostic evidence retained</strong>' : `<button class="danger" data-delete="${cycle.id}">Delete run…</button>`}` : ''}
+    ${cycle.deletion ? `<details><summary>Deletion audit</summary><pre>${json(cycle.deletion)}</pre></details>` : ''}
     <a href="/api/cycles/${cycle.id}/record/md">Human-readable record</a> ·
     <a href="/api/cycles/${cycle.id}/record/json">Structured record (private paths)</a> ·
     <a href="/api/cycles/${cycle.id}/export">Export sanitized partial masterlist</a>
@@ -94,10 +107,27 @@ async function refresh() {
     });
     lastRendering = key;
     document.querySelectorAll('[data-review]').forEach(button => button.onclick = () => edit(button.dataset.review));
+    document.querySelectorAll('[data-delete]').forEach(button => button.onclick = () => previewDeletion(button.dataset.delete));
+    document.querySelectorAll('[data-selection]').forEach(button => button.onclick = async () => {
+      try { const data=await api(`/api/cycles/${button.dataset.selection}/selection-analysis`); $('#analysis-result').textContent=JSON.stringify(data,null,2); $('#analysis-dialog').showModal(); }
+      catch(error) { $('#error').textContent=error.message; }
+    });
   } catch (error) { $('#error').textContent = error.message; }
 }
 
 const fields = {tv:['series','season','disc','edition','series_year'], movie:['title','year'], music:['artist','album','disc'], audiobook:['author','book','disc','part']};
+$('#delete-job-id').oninput=()=>{ $('#delete-confirm').disabled=!(deletionPlan?.safe && $('#delete-job-id').value===String(deletionPlan.job_id)); };
+$('#delete-cancel').onclick=()=>{deletionPlan=null; $('#delete-dialog').close();};
+$('#delete-confirm').onclick=async()=>{
+  if (!deletionPlan?.safe || $('#delete-job-id').value!==String(deletionPlan.job_id)) return;
+  const plan=deletionPlan; deletionPlan=null; $('#delete-confirm').disabled=true;
+  try {
+    const result=await api(`/api/cycles/${deletionCycle}/delete-run`,{token:plan.token,confirmed_job_id:Number($('#delete-job-id').value)});
+    $('#delete-plan').textContent=JSON.stringify(result,null,2);
+    $('#delete-error').textContent=result.status==='deleted' ? 'Run deleted. Remove the disc, close the tray, then manually reopen it empty for the next test.' : 'Cleanup incomplete. Inspect errors; obtain a new preview before another explicit attempt.';
+    await refresh();
+  } catch(error) { $('#delete-error').textContent=error.message; }
+};
 function drawFields(identity) {
   $('#fields').innerHTML = fields[$('#media_type').value].map(field => `<label>${field}<input data-field="${field}" value="${esc(identity[field] ?? '')}" ${['season','year','series_year','disc'].includes(field) ? 'type="number" min="0"' : 'maxlength="160"'}></label>`).join('');
 }

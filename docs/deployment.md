@@ -1,5 +1,12 @@
 # Deployment and rollback
 
+For **0.3.8**, first qualify/build the companion detention-v7 overlay from the same
+source commit and your existing compatible private ARM base. Its source-selection
+and guarded deletion code runs inside ARM, not in the GHCR helper. Replace ARM and
+helper only after checking all drives, capture and inference work are idle and
+backing up state/configuration/database. Do not use the helper-only upgrade shortcut
+below when moving from an older overlay. See `selection-and-deletion.md`.
+
 ## Prerequisites and boundaries
 
 Only Linux/amd64 is validated. The published image runs recognition-helper/FastAPI,

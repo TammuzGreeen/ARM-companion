@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import uvicorn
 from recognition_helper import main
@@ -18,6 +19,25 @@ main.engine.camera.status={'stage':'waiting','tray':'closed','connected':False,'
 main.engine.queue={'drives':[{'mount':'synthetic','state':'ready'}]}
 main.engine.backend={'synthetic':True}
 c=populate(main.engine)
+cleanup=main.engine.store.create(state='completed_detained',local_done=True)
+cleanup.update(created=c['created']-1,backend_done=True,recognition_done=True,job_id=100,
+               job_guid='22222222-2222-4222-8222-222222222222')
+cleanup_root=main.settings.detention/f"job-100-{cleanup['job_guid']}"
+cleanup_root.mkdir(parents=True)
+cleanup_file=cleanup_root/'DETAINED_test.mkv';cleanup_file.write_bytes(b'synthetic delete GUI test')
+cleanup['sources']=[{'source_id':0,'state':'complete','path':str(cleanup_file),'reason':'synthetic unidentified file'}]
+main.engine.store.save(cleanup)
+removed=False
+def delete_check(*args):
+    return {'root':str(Path(main.settings.arm_media)/'detention'/cleanup_root.name),
+            'job_guid':cleanup['job_guid'],'cycle_id':cleanup['id']}
+def delete_finished(*args):
+    global removed
+    removed=True
+    return {'arm':{'success':True}}
+ready={'drives':[{'mount':main.settings.drive,'state':'ready','job_id':None}],'optical_processes':[]}
+main.engine.arm=SimpleNamespace(deletion_check=delete_check,delete_finished=delete_finished,
+    jobs=lambda:[] if removed else [{'job_id':100,'guid':cleanup['job_guid']}],queue_status=lambda:ready)
 @main.app.post('/__test__/stale-assignment')
 def stale_assignment():
     c['sources'][1]['assignment']={'kind':'tv','number':77}

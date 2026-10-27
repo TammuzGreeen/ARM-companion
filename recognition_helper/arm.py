@@ -126,6 +126,15 @@ class ARM:
     def queue_status(self):
         return self.call('GET', 'recognition-helper/queue')
 
+    def deletion_check(self, job_id, guid, cycle_id):
+        return self.call('POST', f'jobs/{int(job_id)}/recognition-helper/delete-check', {'job_guid':guid, 'cycle_id':cycle_id})
+
+    def delete_finished(self, job_id, guid, cycle_id):
+        return self.call('POST', f'jobs/{int(job_id)}/recognition-helper/delete', {'job_guid':guid, 'cycle_id':cycle_id})
+
+    def selection_analysis(self, job_id):
+        return self.call('GET', f'jobs/{int(job_id)}/recognition-helper/selection-analysis')
+
     def reconcile_drive(self, job_id, job_guid):
         return self.call('POST', 'recognition-helper/reconcile-drive', {'job_id': job_id, 'job_guid': job_guid})
 

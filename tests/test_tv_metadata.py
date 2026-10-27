@@ -216,7 +216,9 @@ def fixture():
 
 def test_retained_job16_generic_preextraction_selection_mapping_and_names():
     f=fixture();tracks=[track(t['source_id'],t['duration_seconds'],t['chapters'],t['size_bytes']) for t in f['titles']]
-    with pytest.raises(SelectionPending):select(job('unknown'),tracks,rank)
+    technical,technical_report=select(job('unknown'),tracks,rank)
+    assert technical_report['selection_category']=='tv'
+    assert [int(t.track_number) for t in technical]==[0,3,4,6]
     d=merge(f['locals'],references=[f['reference']])
     selected,report=select(job('unknown'),tracks,rank,d['identity']['media_type'],True)
     assert report['selected_ids']==[0,3,4,6]

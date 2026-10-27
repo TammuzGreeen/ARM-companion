@@ -18,7 +18,7 @@ try:
 except ImportError:  # software tests outside installed ARM
     from backend_overlay.video_selection import select as select_video, SelectionPending, settings as movie_settings
 
-VERSION = 'recognition-helper-detention-v6'
+VERSION = 'recognition-helper-detention-v7'
 
 
 def evidence_path(job):
@@ -372,7 +372,7 @@ def prepare_and_start(job, cycle_id, content_kind=None, recognition_finished=Fal
                 raise ValueError('VIDEO_STALL_SECONDS must be at least 60')
             try:
                 tracks, video_selection = select_video(job, tracks, rank_mainfeature_tracks,
-                                                       content_kind, recognition_finished, tv_context)
+                                                        content_kind, recognition_finished, tv_context, evidence)
             except SelectionPending as exc:
                 evidence['video_selection'] = exc.report
                 write_evidence(job, evidence)
@@ -636,6 +636,37 @@ def reconcile_drive(job_id, job_guid):
         return {'success': False, 'deferred': True, 'reason': 'Original job PID still exists; ownership unchanged'}
     job_cleanup(str(job.job_id))
     return {'success': True, 'job_id': job.job_id, 'job_guid': str(job.guid)}
+
+
+def deletion_check(job, guid, cycle_id):
+    if str(job.guid) != guid or job.status not in ('success', 'fail') or not job.stop_time:
+        raise ValueError('Job GUID changed or job is not finalized')
+    if optical_processes() or (getattr(job, 'pid', None) and Path(f'/proc/{int(job.pid)}').exists()):
+        raise ValueError('Optical/ripper process still exists; deletion unavailable')
+    if managed(job) and load(job)['cycle_id'] != cycle_id:
+        raise ValueError('Job manifest belongs to another cycle')
+    queue = queue_state()
+    if any(d['job_id'] not in (None, job.job_id) for d in queue['drives']):
+        raise ValueError('Another job owns a drive; deletion deferred')
+    return {'job_id':job.job_id, 'job_guid':guid, 'cycle_id':cycle_id,
+            'status':job.status, 'root':str(job_dir(job)), 'queue':queue,
+            'arm_operation':'installed svc_jobs.delete_job: database rows and matching drive references only; no media deletion'}
+
+
+def delete_finished(job, guid, cycle_id):
+    # Same lock used by the start reservation. Never terminate or reclassify a job.
+    from arm.services import jobs as svc_jobs
+    lockpath = root() / f'.job-{job.job_id}-{UUID(str(job.guid))}.lock'
+    fd = os.open(lockpath, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o660)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        deletion_check(job, guid, cycle_id)
+        result = svc_jobs.delete_job(str(job.job_id), 'delete')
+        if not result.get('success'):
+            raise ValueError('Installed ARM delete operation failed')
+        return {'arm':result, 'queue':queue_state()}
+    finally:
+        os.close(fd)
 
 
 def finalize_video(job):

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.8 beta
+
+- Analyze independent episode clusters, duplicate playlist/stream signatures and
+  combined playlist segment unions before unknown-disc main-feature selection.
+  Clear movie/TV structures can rip while recognition continues; genuine playlist
+  ambiguity waits. Editorial identity and ascending episode mapping stay separate.
+- Retained-scan analysis is read-only and explicitly distinguishes original extracted
+  source IDs from current technical candidates.
+- Authenticated, preview-bound Delete run for finalized detained/failed jobs, with
+  typed job-ID confirmation, registered-file inventory/fingerprints, shared/released
+  file protection, partial-failure audit and explicit user-driven recovery.
+- ARM overlay v7 guards the installed database-only job deletion service with GUID,
+  finalization, process and ownership checks; queue/drive readiness is verified.
+- Experimental media transfer is not included in this stable beta.
+
 ## 0.3.7 beta
 
 - Manual review: actual extracted durations before labeled scan estimates, honest

@@ -56,6 +56,42 @@ def recognition_helper_queue():
 def recognition_helper_reconcile(body: dict):
     from arm.ripper import recognition_helper as helper
     return helper.reconcile_drive(body.get('job_id'), body.get('job_guid'))
+
+
+@router.post('/jobs/{job_id}/recognition-helper/delete-check')
+def recognition_helper_delete_check(job_id: int, body: dict):
+    from arm.ripper import recognition_helper as helper
+    job = Job.query.get(job_id)
+    if not job:
+        return JSONResponse({'success': False, 'error': 'Job not found'}, status_code=404)
+    try:
+        return helper.deletion_check(job, body.get('job_guid'), body.get('cycle_id'))
+    except (ValueError, OSError) as exc:
+        return JSONResponse({'success': False, 'error': str(exc)}, status_code=409)
+
+
+@router.post('/jobs/{job_id}/recognition-helper/delete')
+def recognition_helper_delete(job_id: int, body: dict):
+    from arm.ripper import recognition_helper as helper
+    job = Job.query.get(job_id)
+    if not job:
+        return JSONResponse({'success': False, 'error': 'Job not found'}, status_code=404)
+    try:
+        return helper.delete_finished(job, body.get('job_guid'), body.get('cycle_id'))
+    except (ValueError, OSError) as exc:
+        return JSONResponse({'success': False, 'error': str(exc)}, status_code=409)
+
+
+@router.get('/jobs/{job_id}/recognition-helper/selection-analysis')
+def recognition_helper_selection_analysis(job_id: int):
+    from arm.ripper import recognition_helper as helper
+    from arm.ripper.recognition_helper_selection import analyze_titles
+    job = Job.query.get(job_id)
+    if not job:
+        return JSONResponse({'success': False, 'error': 'Job not found'}, status_code=404)
+    return {'analysis':analyze_titles(list(job.tracks), helper.read_evidence(job)),
+            'actual_selected_ids':[s['source_id'] for s in helper.load(job)['sources']] if helper.managed(job) else [],
+            'read_only':True, 'note':'Current analysis of retained scan; original extraction is unchanged'}
 '''
 
 NATIVE_RANKER = '''
