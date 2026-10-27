@@ -4,6 +4,7 @@ LABEL org.opencontainers.image.title="recognition-helper" org.opencontainers.ima
 RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 flac && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 COPY LICENSE /usr/share/doc/recognition-helper/LICENSE
+COPY NOTICE /usr/share/doc/recognition-helper/NOTICE
 RUN pip install --no-cache-dir -r requirements.txt
 COPY recognition_helper ./recognition_helper
 COPY tests ./tests

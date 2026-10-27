@@ -2,6 +2,7 @@
 !Dockerfile
 !requirements.txt
 !LICENSE
+!NOTICE
 !recognition_helper/
 !recognition_helper/**
 !backend_overlay/
