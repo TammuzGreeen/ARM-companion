@@ -1,5 +1,6 @@
 """Atomic per-cycle structured and human-readable accountability records."""
 import copy
+import hashlib
 import json
 import os
 import threading
@@ -13,9 +14,11 @@ class Store:
         self.root.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.cycles = {}
+        self._saved_content = {}
         for path in self.root.glob('*/record.json'):
             record = json.loads(path.read_text())
             self.cycles[record['id']] = record
+            self._saved_content[record['id']] = self._content_digest(record)
 
     def create(self, **fields):
         with self.lock:
@@ -32,6 +35,9 @@ class Store:
 
     def save(self, cycle):
         with self.lock:
+            digest = self._content_digest(cycle)
+            if self._saved_content.get(cycle['id']) == digest:
+                return False
             cycle['updated'] = time.time()
             folder = self.root / cycle['id']
             folder.mkdir(exist_ok=True, mode=0o700)
@@ -72,6 +78,43 @@ class Store:
                              json.dumps({k: v for k, v in event.items() if k not in ('at', 'action')}, ensure_ascii=False))
             lines += ['', 'Full findings, source metadata, timestamps and paths: record.json']
             (folder / 'record.md').write_text('\n'.join(lines))
+            self._saved_content[cycle['id']] = digest
+            return True
+
+    @staticmethod
+    def _content_digest(cycle):
+        # Ignore only the persistence timestamp, never evidence or audit history.
+        content = {k: v for k, v in cycle.items() if k != 'updated'}
+        return hashlib.sha256(json.dumps(content, ensure_ascii=False, sort_keys=True,
+                                         separators=(',', ':')).encode()).digest()
+
+    def summaries(self):
+        """Copy only card fields under the lock, not the historical evidence corpus."""
+        fields = ('id', 'created', 'updated', 'state', 'job_id', 'backend_status',
+                  'recognition_done', 'technical_error', 'fallback_unavailable', 'snapshots')
+        source_fields = ('source_id', 'state', 'path', 'basename', 'arm_track_id',
+                         'proposed', 'reason', 'release_error', 'error')
+        with self.lock:
+            rows = []
+            for cycle in sorted(self.cycles.values(), key=lambda c: c['created'], reverse=True):
+                row = {key: copy.deepcopy(cycle[key]) for key in fields if key in cycle}
+                if cycle.get('deletion'):
+                    row['deletion'] = {'status': cycle['deletion'].get('status')}
+                row['sources'] = []
+                for source in cycle['sources']:
+                    item = {key: copy.deepcopy(source[key]) for key in source_fields if key in source}
+                    metadata = source.get('backend_metadata', {})
+                    item['backend_metadata'] = {
+                        'scan_duration': metadata.get('scan_duration'),
+                        'duration_validation': {'actual_seconds': metadata.get('duration_validation', {}).get('actual_seconds')},
+                        'output_probe': {'format': {'duration': metadata.get('output_probe', {}).get('format', {}).get('duration')}}}
+                    row['sources'].append(item)
+                rows.append(row)
+            return rows
+
+    def detail(self, cycle_id):
+        with self.lock:
+            return copy.deepcopy(self.cycles[cycle_id])
 
     def snapshot(self):
         with self.lock:

@@ -12,7 +12,9 @@ async function previewDeletion(id) {
 }
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const json = value => esc(JSON.stringify(value, null, 2));
-let current, draftIdentity = {}, cycles = [], previewed = false, lastRendering = '', paths = {};
+let current, draftIdentity = {}, cycles = [], previewed = false, paths = {};
+let refreshFlight = null, pollTimer = null, refreshAgain = false;
+let refreshGeneration = 0;
 let reviewData, dirty = false;
 let editRevision = 0, acceptedPayload = null;
 function invalidatePreview() { editRevision++; acceptedPayload=null; previewed=false; $('#submit').disabled=true; }
@@ -39,7 +41,7 @@ function outputRow(source) {
   const reason = source.reason || source.release_error || source.error;
   const actual = source.backend_metadata?.duration_validation?.actual_seconds ?? source.backend_metadata?.output_probe?.format?.duration;
   const seconds = Number(actual) > 0 ? actual : source.backend_metadata?.scan_duration;
-  return `<tr><td>Source ${esc(source.source_id)}</td>
+  return `<tr data-key="source-${esc(source.source_id)}"><td>Source ${esc(source.source_id)}</td>
     <td class="${esc(source.state)}">${esc(status)}${source.state !== 'released' ? ' · DETAINED' : ''}</td>
     <td><strong>${duration(seconds)}</strong> · ${Number(actual) > 0 ? 'actual extracted' : Number(seconds)>0 ? 'scan estimate' : 'unavailable'}<br>${sourceDetails(source)}</td>
     <td>${esc(source.proposed)}<br><span class="reason">${esc(reason)}</span></td></tr>`;
@@ -47,28 +49,33 @@ function outputRow(source) {
 
 function render(cycle) {
   const reviewable = cycle.sources.some(source => source.state !== 'released');
+  return `<article><h2>${new Date(cycle.created * 1000).toLocaleString()} <span class="badge">${esc(cycle.state)}</span></h2>
+    <p>Cycle ${esc(cycle.id)} · ARM job ${esc(cycle.job_id ?? 'pending')} · Extraction: <strong>${esc(cycle.backend_status ?? 'pending')}</strong> · Recognition: ${cycle.recognition_done ? 'complete' : 'pending'}</p>
+     <p class="reason" ${cycle.technical_error ? '' : 'hidden'}>Technical failure: ${esc(cycle.technical_error)}</p>
+     <p class="reason" ${cycle.fallback_unavailable ? '' : 'hidden'}>${esc(cycle.fallback_unavailable)}</p>
+    <details data-captures><summary>Retained disc snapshots</summary><div class="snapshots" data-keyed>${(cycle.snapshots || []).filter(name => name.startsWith('capture')).map(name => {
+      const original = name.replace('capture-', 'original-');
+      return `<figure data-key="${esc(name)}"><a target="_blank" href="/api/cycles/${cycle.id}/evidence/${name}"><img alt="Retained disc snapshot" width="240" loading="lazy" decoding="async" data-src="/api/cycles/${cycle.id}/evidence/${name}"></a><figcaption><a target="_blank" href="/api/cycles/${cycle.id}/evidence/${original}">Original webcam image</a></figcaption></figure>`;
+    }).join('')}</div></details>
+    <table><thead><tr><th>Source identifier</th><th>Status</th><th>Duration / file details</th><th>Proposed name / unresolved reason</th></tr></thead>
+     <tbody data-keyed>${cycle.sources.map(outputRow).join('')}</tbody></table>
+    <button data-review="${cycle.id}" ${reviewable && !cycle.deletion ? '' : 'disabled'}>Identify / correct detained outputs</button>
+     <div>${cycle.job_id ? `<button data-selection="${cycle.id}">Analyze retained video scan</button>${cycle.deletion?.status==='deleted' ? '<strong>Run deleted — diagnostic evidence retained</strong>' : `<button class="danger" data-delete="${cycle.id}">Delete run…</button>`}` : ''}</div>
+     <p ${cycle.deletion ? '' : 'hidden'}>Deletion: ${esc(cycle.deletion?.status)} — full audit in findings below.</p>
+    <a href="/api/cycles/${cycle.id}/record/md">Human-readable record</a> ·
+    <a href="/api/cycles/${cycle.id}/record/json">Structured record (private paths)</a> ·
+    <a href="/api/cycles/${cycle.id}/export">Export sanitized partial masterlist</a>
+    <details data-findings><summary>Findings, enrichment and source mapping</summary><div data-lazy>Open to load retained evidence.</div></details></article>`;
+}
+
+function renderEvidence(cycle) {
   const evidence = cycle.sources.map(source => ({source_id:source.source_id,
     assignment:source.assignment, manual_correction:source.manual_authorized || false,
     extraction_state:source.extraction_state, number_kind:source.backend_metadata?.source_number_kind,
     provenance:source.backend_metadata?.scan_source, physical_toc:source.backend_metadata?.physical_toc_track,
     stream_comparison:source.backend_metadata?.stream_comparison}));
-  return `<article><h2>${new Date(cycle.created * 1000).toLocaleString()} <span class="badge">${esc(cycle.state)}</span></h2>
-    <p>Cycle ${esc(cycle.id)} · ARM job ${esc(cycle.job_id ?? 'pending')} · Extraction: <strong>${esc(cycle.backend_status ?? 'pending')}</strong> · Recognition: ${cycle.recognition_done ? 'complete' : 'pending'}</p>
-    ${cycle.technical_error ? `<p class="reason">Technical failure: ${esc(cycle.technical_error)}</p>` : ''}
-    ${cycle.fallback_unavailable ? `<p class="reason">${esc(cycle.fallback_unavailable)}</p>` : ''}
-    <div class="snapshots">${(cycle.snapshots || []).filter(name => name.startsWith('capture')).map(name => {
-      const original = name.replace('capture-', 'original-');
-      return `<figure><a target="_blank" href="/api/cycles/${cycle.id}/evidence/${name}"><img alt="Retained disc snapshot" src="/api/cycles/${cycle.id}/evidence/${name}"></a><figcaption><a target="_blank" href="/api/cycles/${cycle.id}/evidence/${original}">Original webcam image</a></figcaption></figure>`;
-    }).join('')}</div>
-    <table><thead><tr><th>Source identifier</th><th>Status</th><th>Duration / file details</th><th>Proposed name / unresolved reason</th></tr></thead>
-    <tbody>${cycle.sources.map(outputRow).join('')}</tbody></table>
-    <button data-review="${cycle.id}" ${reviewable && !cycle.deletion ? '' : 'disabled'}>Identify / correct detained outputs</button>
-    ${cycle.job_id ? `<button data-selection="${cycle.id}">Analyze retained video scan</button>${cycle.deletion?.status==='deleted' ? '<strong>Run deleted — diagnostic evidence retained</strong>' : `<button class="danger" data-delete="${cycle.id}">Delete run…</button>`}` : ''}
-    ${cycle.deletion ? `<details><summary>Deletion audit</summary><pre>${json(cycle.deletion)}</pre></details>` : ''}
-    <a href="/api/cycles/${cycle.id}/record/md">Human-readable record</a> ·
-    <a href="/api/cycles/${cycle.id}/record/json">Structured record (private paths)</a> ·
-    <a href="/api/cycles/${cycle.id}/export">Export sanitized partial masterlist</a>
-    <details><summary>Findings, enrichment and source mapping</summary>
+  return `
+      <h3 ${cycle.deletion ? '' : 'hidden'}>Deletion audit</h3><pre ${cycle.deletion ? '' : 'hidden'}>${json(cycle.deletion)}</pre>
       <h3>Local observations</h3><pre>${json({requests:cycle.local_requests, results:cycle.locals})}</pre>
       <h3>External fallback</h3><pre>${json(cycle.fallback || {status:cycle.fallback_pending ? 'pending' : 'not called', reasons:cycle.fallback_reasons})}</pre>
       <h3>Combined identity / masterlist / attribution</h3><pre>${json(cycle.decision || {})}</pre>
@@ -76,7 +83,106 @@ function render(cycle) {
       <h3>Source assignments and preservation evidence</h3><pre>${json(evidence)}</pre>
       <details><summary>Detailed backend source metadata</summary><pre>${json(cycle.sources.map(s => ({source_id:s.source_id, metadata:s.backend_metadata})))}</pre></details>
       <h3>Corrections and history</h3><pre>${json({corrections:cycle.corrections, history:cycle.history})}</pre>
-    </details></article>`;
+    `;
+}
+
+// Patch existing nodes instead of replacing cards. Details and focus survive updates.
+function patchNode(node, next) {
+  if (node.nodeType !== next.nodeType || node.nodeName !== next.nodeName) {
+    node.replaceWith(next.cloneNode(true)); return;
+  }
+  if (node.nodeType === Node.TEXT_NODE) {
+    if (node.data !== next.data) node.data = next.data;
+    return;
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE || node.hasAttribute('data-lazy')) return;
+  for (const attr of [...node.attributes]) {
+    if (attr.name === 'open' || (node.tagName === 'IMG' && attr.name === 'src')) continue;
+    if (!next.hasAttribute(attr.name)) node.removeAttribute(attr.name);
+  }
+  for (const attr of next.attributes) {
+    if (node.getAttribute(attr.name) !== attr.value) node.setAttribute(attr.name, attr.value);
+  }
+  if (node.hasAttribute('data-keyed')) {
+    const existing = new Map([...node.children].map(child => [child.dataset.key, child]));
+    [...next.children].forEach((child, index) => {
+      let match = existing.get(child.dataset.key);
+      if (match) { patchNode(match, child); existing.delete(child.dataset.key); }
+      else match = child.cloneNode(true);
+      if (node.children[index] !== match) node.insertBefore(match, node.children[index] || null);
+    });
+    existing.forEach(child => child.remove());
+    return;
+  }
+  const old = [...node.childNodes], fresh = [...next.childNodes];
+  for (let i = 0; i < Math.max(old.length, fresh.length); i++) {
+    if (!fresh[i]) old[i].remove();
+    else if (!old[i]) node.append(fresh[i].cloneNode(true));
+    else patchNode(old[i], fresh[i]);
+  }
+}
+
+async function loadFindings(card) {
+  const panel = card.querySelector('[data-findings]');
+  if (!panel.open || card.detailFlight || card.detailRevision === card.dataset.revision) return;
+  const revision = card.dataset.revision;
+  card.detailFlight = true;
+  try {
+    const detail = await api(`/api/cycles/${card.dataset.id}`);
+    if (!card.isConnected || !panel.isConnected || !panel.open || card.dataset.revision !== revision || String(detail.updated ?? '') !== revision) return;
+    const content = card.querySelector('[data-lazy]');
+    const next = document.createElement('div'); next.innerHTML = renderEvidence(detail);
+    // Keep nested disclosure nodes when their contents change.
+    content.removeAttribute('data-lazy');
+    patchNode(content, next);
+    content.setAttribute('data-lazy', '');
+    card.detailRevision = revision;
+  } catch (error) {
+    if (card.isConnected && panel.open && card.dataset.revision === revision) $('#error').textContent = error.message;
+  } finally {
+    card.detailFlight = false;
+    if (card.isConnected && panel.open && card.dataset.revision !== revision) loadFindings(card);
+  }
+}
+
+function bindCard(card) {
+  card.querySelector('[data-review]').onclick = () => edit(card.dataset.id);
+  const deletion = card.querySelector('[data-delete]');
+  if (deletion) deletion.onclick = () => previewDeletion(card.dataset.id);
+  const selection = card.querySelector('[data-selection]');
+  if (selection) selection.onclick = async () => {
+    try { const data = await api(`/api/cycles/${card.dataset.id}/selection-analysis`); $('#analysis-result').textContent = JSON.stringify(data, null, 2); $('#analysis-dialog').showModal(); }
+    catch (error) { $('#error').textContent = error.message; }
+  };
+  card.querySelector('[data-findings]').ontoggle = () => loadFindings(card);
+  const captures = card.querySelector('[data-captures]');
+  captures.ontoggle = () => {
+    if (captures.open) captures.querySelectorAll('img[data-src]').forEach(img => { if (!img.hasAttribute('src')) img.src = img.dataset.src; });
+  };
+  if (captures.open) captures.ontoggle();
+}
+
+function updateCards() {
+  const container = $('#cycles'), present = new Map([...container.querySelectorAll(':scope > article')].map(card => [card.dataset.id, card]));
+  if (!cycles.length) { container.textContent = 'No cycles yet. Start with a manual empty opening.'; return; }
+  if (!present.size) container.replaceChildren();
+  let previous = null;
+  for (const cycle of cycles) {
+    let card = present.get(cycle.id);
+    const revision = String(cycle.updated ?? '');
+    if (!card || card.dataset.revision !== revision) {
+      const template = document.createElement('template'); template.innerHTML = render(cycle);
+      if (card) patchNode(card, template.content.firstElementChild);
+      else card = template.content.firstElementChild;
+      card.dataset.id = cycle.id; card.dataset.revision = revision;
+      bindCard(card);
+    }
+    const expected = previous ? previous.nextElementSibling : container.firstElementChild;
+    if (expected !== card) container.insertBefore(card, expected);
+    previous = card; present.delete(cycle.id);
+    loadFindings(card);
+  }
+  present.forEach(card => card.remove());
 }
 
 function fallbackStatus(fallback) {
@@ -86,9 +192,23 @@ function fallbackStatus(fallback) {
   return `${fallback.model} · $${fallback.committed_cost_estimate_usd} committed of $${fallback.spending_limit_usd}`;
 }
 
-async function refresh() {
+function refresh() {
+  const generation = ++refreshGeneration;
+  if (refreshFlight) { refreshAgain = true; return refreshFlight; }
+  clearTimeout(pollTimer);
+  refreshFlight = refreshOnce(generation).finally(() => {
+    refreshFlight = null;
+    const delay = refreshAgain ? 0 : document.hidden ? 10000 : 2000;
+    refreshAgain = false;
+    pollTimer = setTimeout(refresh, delay);
+  });
+  return refreshFlight;
+}
+
+async function refreshOnce(generation) {
   try {
-    const state = await api('/api/state');
+    const state = await api('/api/status');
+    if (generation !== refreshGeneration) return;
     cycles = state.cycles;
     paths = state.paths || {};
     $('#stage').textContent = state.camera.stage === 'ready' ? 'READY FOR DISC' : state.camera.stage;
@@ -97,22 +217,8 @@ async function refresh() {
     $('#backend').textContent = `Drive: ${queue} · Tray: ${state.camera.tray} · Camera: ${state.camera.connected ? 'connected' : 'idle'} · Sharpness: ${state.camera.sharpness ?? '—'} · Fallback: ${fallbackStatus(state.fallback)}`;
     $('#error').textContent = state.error || '';
     if (state.camera.connected) $('#live').src = '/api/preview.jpg?t=' + Date.now();
-    const key = JSON.stringify(cycles.map(cycle => [cycle.id, cycle.updated]));
-    if (key === lastRendering || $('#review').open) return;
-    const opened = [...document.querySelectorAll('article > details[open]')].map(element => element.closest('article').dataset.id);
-    $('#cycles').innerHTML = cycles.map(cycle => render(cycle).replace('<article>', `<article data-id="${cycle.id}">`)).join('') || '<p>No cycles yet. Start with a manual empty opening.</p>';
-    opened.forEach(id => {
-      const details = document.querySelector(`article[data-id="${id}"] > details`);
-      if (details) details.open = true;
-    });
-    lastRendering = key;
-    document.querySelectorAll('[data-review]').forEach(button => button.onclick = () => edit(button.dataset.review));
-    document.querySelectorAll('[data-delete]').forEach(button => button.onclick = () => previewDeletion(button.dataset.delete));
-    document.querySelectorAll('[data-selection]').forEach(button => button.onclick = async () => {
-      try { const data=await api(`/api/cycles/${button.dataset.selection}/selection-analysis`); $('#analysis-result').textContent=JSON.stringify(data,null,2); $('#analysis-dialog').showModal(); }
-      catch(error) { $('#error').textContent=error.message; }
-    });
-  } catch (error) { $('#error').textContent = error.message; }
+    if (!$('#review').open) updateCards();
+  } catch (error) { if (generation === refreshGeneration) $('#error').textContent = error.message; }
 }
 
 const fields = {tv:['series','season','disc','edition','series_year'], movie:['title','year'], music:['artist','album','disc'], audiobook:['author','book','disc','part']};
@@ -243,4 +349,4 @@ $('#form').onsubmit = async event => {
 };
 $('#cancel').onclick = () => $('#review').close();
 refresh();
-setInterval(refresh, 2000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

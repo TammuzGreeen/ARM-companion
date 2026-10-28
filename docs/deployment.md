@@ -1,6 +1,11 @@
 # Deployment and rollback
 
-For **0.3.8**, first qualify/build the companion detention-v7 overlay from the same
+Version **0.4.0** is a helper-only performance update; keep the compatible
+detention-v7 ARM backend. Back up state/config, verify no ARM/capture/model work
+is active, and deploy the verified immutable helper digest. Retain the previous
+helper digest for rollback. No media cleanup or transfer is part of deployment.
+
+For the **0.3.8** backend features, first qualify/build the companion detention-v7 overlay from the same
 source commit and your existing compatible private ARM base. Its source-selection
 and guarded deletion code runs inside ARM, not in the GHCR helper. Replace ARM and
 helper only after checking all drives, capture and inference work are idle and

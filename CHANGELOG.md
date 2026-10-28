@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 beta
+
+- Skip unchanged persistence while preserving real transitions and audit evidence.
+- Add lightweight authenticated status summaries and on-demand cycle details;
+  preserve the existing full-state API and all retained records.
+- Retain card/image identity, lazily load findings and retained captures, and
+  preserve nested disclosures, focus and manual-review drafts.
+- Serialize polling, reject superseded responses and reduce hidden-tab polling.
+- Preserve recognition, selection, release and deletion safeguards; ARM overlay
+  and experimental media transfer remain unchanged.
+
 ## 0.3.8 beta
 
 - Analyze independent episode clusters, duplicate playlist/stream signatures and

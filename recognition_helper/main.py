@@ -51,7 +51,24 @@ def health():
 
 @app.get('/api/state')
 def state():
-    cycles = engine.store.snapshot()
+    return state_payload(engine.store.snapshot())
+
+
+@app.get('/api/status')
+def status():
+    return state_payload(engine.store.summaries())
+
+
+@app.get('/api/cycles/{cycle_id}')
+def cycle_detail(cycle_id: str):
+    try:
+        cycle = engine.store.detail(cycle_id)
+    except KeyError:
+        raise HTTPException(404, 'Unknown cycle') from None
+    return state_payload([cycle])['cycles'][0]
+
+
+def state_payload(cycles):
     for cycle in cycles:
         for source in cycle['sources']:
             source['reason'] = source.get('reason') or source.get('release_error') or source.get('error')
@@ -60,12 +77,14 @@ def state():
                     source['host_path'] = str(Path(settings.media_host) / Path(source['path']).relative_to(settings.media))
                 except ValueError:
                     pass
+    with engine.store.lock:
+        cost = committed(engine.store.cycles.values())
     return {'camera': engine.camera.status, 'backend': engine.backend, 'queue': engine.queue,
             'error': engine.error, 'cycles': cycles, 'paths': {'released': str(settings.released)},
             'selection_settings': {'tv_min_length_seconds': settings.tv_min_length_seconds},
             'fallback': {'configured_key_file': bool(settings.key_file or settings.external_key), 'call_limit': settings.fallback_limit,
                          'model': settings.external_model, 'spending_limit_usd': settings.spending_limit,
-                         'committed_cost_estimate_usd': committed(engine.store.cycles.values()),
+                          'committed_cost_estimate_usd': cost,
                          'runtime_access': engine.vision.access}}
 
 

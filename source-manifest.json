@@ -1,7 +1,7 @@
 {
-  "application_version": "0.3.8",
+  "application_version": "0.4.0",
   "files": {
-    "recognition_helper/__init__.py": "2dfb99a2ea1ba4757c9600506fe7a9a826b18084a643172f2555eb7121ea3c21",
+    "recognition_helper/__init__.py": "7494f1643b190c37685b25b6f1c74896f5e39c92b5a18d0ba259feed3b649c34",
     "recognition_helper/arm.py": "b59fbb690bbe5cd7d88b19ad2316d4bbe4c78f32ed94b2046df476129d0d5092",
     "recognition_helper/audio_metadata.py": "49b628cdb5328be6375c028c4cbab0f17cbe24ed7a3c5fe182335b6357c363cc",
     "recognition_helper/audio_tags.py": "bbcded582303a2dfbfe59048c1b389d62c1c5e3cbf39750570b2b8a5b5c29e1c",
@@ -9,25 +9,25 @@
     "recognition_helper/camera.py": "5c5f70629332e10024033eb1527726199b3284b08007314a73b8e99db43f12c1",
     "recognition_helper/config.py": "4e0cc6a27f418b4061fb949fa46e44591a39f305704142d0306023f6108f4773",
     "recognition_helper/decisions.py": "5667335c4ca9ceb64f60f190e5f831ab1c05a6a8c78da8728d0f06112b5aa002",
-    "recognition_helper/engine.py": "9b13553da87e1404af4f324bd9536208000e31ea842f8e49fc1812d77ee32113",
-    "recognition_helper/main.py": "aa9b79e6640491d2bbf463282d59544dfab7b65c88ca93aa87be19b64dcf8d4b",
+    "recognition_helper/engine.py": "9d8a3ea5428f50d9969d327931dcc7192dcfe53c4b51ad29e908b74b141893ab",
+    "recognition_helper/identity_aliases.json": "e4e7fe5fd2632e7747c940867dc203fd287d626857b5568a7237d68283d86ca6",
+    "recognition_helper/main.py": "4b3ff39c87e30f5458b08e12dae2fe930a60c13d8bad3b5ad73cbc54bd185aae",
     "recognition_helper/masterlists.py": "18c77758f21c8613c16d5b5b39001ba02dbbf473c06655b84005f6495aae258d",
     "recognition_helper/review.py": "f1ad386f4f38655709d019b89b0af972fede002e36cbbc650d82ca5f404945e4",
     "recognition_helper/run_deletion.py": "70a3ebecc54711554009d2abed30957d8f6cec38716d1f4809fafee306d81aba",
     "recognition_helper/source_references.py": "43247258b14c9496988294828aa2758e66ad202cfbe18abc0f7d9839d49a10d1",
-    "recognition_helper/static/app.js": "99c48f8ab027c3025f5c0ac265ad30c84d8e69b414cd7f397b63c3f7fad05a57",
+    "recognition_helper/static/app.js": "e875ddf20253a5701b9c0f8bb8d750321e3192312870246c00b5897eb0ae1966",
     "recognition_helper/static/index.html": "3a699f8c5b400a82f35da82274733b4418e2a9e399c68b17f4bdb59dff92dbc2",
     "recognition_helper/static/style.css": "6a50ca137a6ba4b8cfd9b29f9a15084126bad193a49db97af8b472218382f7bd",
-    "recognition_helper/store.py": "fd5f78506fa844f9483f4071503ecbaf594dd7acf1fbe9a49fc3a8fbbcf5402b",
+    "recognition_helper/store.py": "32a97f0104b1d47c0eed8929876bde688e927b41c6bd37e2931c7849509e195c",
     "recognition_helper/tray_monitor.py": "27b41eec8f4c849e1c5fcf3956f86d81a59517d07f359dcf4be01b3d7337d064",
     "recognition_helper/tv_metadata.py": "5887c2fd0b1ab766db9dc532b8c424e626063be92454aad8508e47be5d25d04e",
     "recognition_helper/vision.py": "25a2c2addb2befcec640835e25c2e4cef531fa5adf1679eaf301e12a88c62561",
+    "recognition_helper/vision_pricing.json": "473ffce2bc9aba1eedfb7df5e71daffb705b2847483f08a96735b42ff61c72db",
     "backend_overlay/Dockerfile": "96ecd1a6ff2ff8312ce60be391eff33bedac761b381f7ca4ade1a0c2c71870c2",
     "backend_overlay/apply.py": "ba3593d2e78053f48890ead7b5e3272f3e516bf43dedab9cec021e358a70d7ed",
     "backend_overlay/recognition_helper.py": "cb2689d664a6f47d8c29e8b6a5ed0e8f521cd6d2323e783b1dff0ea30edd3e5c",
     "backend_overlay/video_selection.py": "8616cd4f54a67c478a9db5a1862ed67cd471fe8c151b90a1d4b5306d39891f39",
-    "backend_overlay/watchdog.py": "9d3f9897d42449a217a50606a7bdf081cc040876a72e156fe63c360202c040b8",
-    "recognition_helper/vision_pricing.json": "473ffce2bc9aba1eedfb7df5e71daffb705b2847483f08a96735b42ff61c72db",
-    "recognition_helper/identity_aliases.json": "e4e7fe5fd2632e7747c940867dc203fd287d626857b5568a7237d68283d86ca6"
+    "backend_overlay/watchdog.py": "9d3f9897d42449a217a50606a7bdf081cc040876a72e156fe63c360202c040b8"
   }
 }

@@ -1,6 +1,6 @@
 # ARM companion / recognition-helper
 
-Beta **0.3.8**: a camera-assisted recognition and manual-review helper for an
+Beta **0.4.0**: a camera-assisted recognition and manual-review helper for an
 existing compatible Automatic Ripping Machine (ARM) installation. Linux/amd64.
 
 Two local vision models independently inspect disc captures. Optional masterlists
@@ -13,7 +13,7 @@ publication**. Unassigned or unfinished sources remain detained.
 
 ## Image and architecture boundary
 
-`ghcr.io/tammuzgreeen/arm-companion:0.3.8-beta` contains **the helper only**, not ARM,
+`ghcr.io/tammuzgreeen/arm-companion:0.4.0-beta` contains **the helper only**, not ARM,
 MakeMKV licensing, drive-control services or local AI hosting. Use the immutable
 digest reported by [Actions](../../actions) for reproducible deployments.
 The source includes an ARM overlay (detention-v7 is required for the new selection
@@ -21,6 +21,10 @@ and guarded Delete run operations), but its compatible locally patched base imag
 is **not public or built by this workflow**. This is not a standalone ripper stack.
 See [deployment](docs/deployment.md), [verification](docs/verification.md) and
 [changelog](CHANGELOG.md).
+
+Version 0.4 adds lightweight authenticated polling, stable historical cards and
+on-demand evidence without changing recognition or publication policy. See
+[performance changes](docs/performance-0.4.md).
 
 ## Development
 

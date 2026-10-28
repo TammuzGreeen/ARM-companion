@@ -281,7 +281,7 @@ class Engine:
 
     def decide(self, cycle):
         references = [r for r in self.references if r['id'] not in cycle.get('masterlist_review',{}).get('rejected',[])]
-        if cycle.get('local_done') and not cycle.get('sources') and cycle['backend_done']:
+        if cycle.get('local_done') and not cycle.get('sources') and cycle['backend_done'] and not cycle.get('recognition_done'):
             cycle['decision'] = merge(cycle['locals'], cycle.get('fallback'), references)
             cycle['recognition_done'] = True
             self.store.save(cycle)
